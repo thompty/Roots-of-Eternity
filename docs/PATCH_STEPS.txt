@@ -1,0 +1,113 @@
+Patch & Release Checklist — Roots_Of_Eternity
+
+This file lists the exact steps and example commands to rebuild, verify and push a new installer build (or portable build) to itch.io using butler. Keep this next to your repository so you can copy-paste.
+
+1) Update code & resources
+- Commit your changes locally and run any unit tests you have.
+
+2) Build the project (creates game.jar)
+PowerShell (from repo root):
+
+    powershell -NoProfile -ExecutionPolicy Bypass -File .\build.ps1
+
+Confirm `game.jar` exists and inspect a few entries:
+
+    & jar tf .\game.jar | Select-String '^res/' -First 20
+    Get-FileHash .\game.jar -Algorithm SHA256
+
+3) Stage and package (installer)
+If you use the provided helper script (recommended):
+
+    powershell -NoProfile -ExecutionPolicy Bypass -File .\installer\build-installer.ps1 -AppVersion "1.2.3"
+
+This runs the build, copies artifacts into a staging directory, and runs `jpackage` to produce a Windows installer in `installer\`.
+
+If you use another installer tool, make sure the installer packages the newly-built `game.jar` (verify timestamps and hashes).
+
+4) Verify installer contents before uploading
+Option A — extract with 7-zip (recommended):
+
+    # install 7-zip (manual or winget/choco)
+    # extract to temp folder
+    $tmp = Join-Path $env:TEMP "rte_inst_check_$(Get-Date -Format yyyyMMddHHmmss)"
+    New-Item -ItemType Directory -Path $tmp | Out-Null
+    "C:\Program Files\7-Zip\7z.exe" x .\installer\RootsOfEternity-1.2.3.exe -o$tmp
+    Get-ChildItem -Path $tmp -Recurse -Filter game.jar | Select FullName, Length, LastWriteTime
+    Get-FileHash $tmp\path\to\game.jar -Algorithm SHA256
+
+Compare the hash with your local `game.jar` hash from step 2.
+
+Option B — install to a temp folder (use a VM if possible):
+
+    $installPath = Join-Path $env:TEMP "RTE_Installed_$(Get-Date -Format yyyyMMddHHmmss)"
+    New-Item -ItemType Directory -Path $installPath | Out-Null
+    Start-Process -FilePath .\installer\RootsOfEternity-1.2.3.exe -ArgumentList "/VERYSILENT","/DIR=\"$installPath\"" -Wait
+    Get-ChildItem -Path $installPath -Recurse -Filter game.jar | Select FullName, Length, LastWriteTime
+    Get-FileHash <path-to-installed-game.jar> -Algorithm SHA256
+
+5) Smoke test the jar locally (optional but fast)
+
+    java -jar .\game.jar
+
+If your game needs classpath libs:
+
+    java -cp ".\game.jar;lib\gson-2.10.1.jar;lib\sqlite-jdbc-3.41.2.1.jar" src.main.Main
+
+6) Dry-run the push with butler (preview what will be uploaded)
+
+    butler push --dry-run "C:\full\path\to\installer\RootsOfEternity-1.2.3.exe" thompty/roots-of-eternity:windows --userversion "1.2.3"
+
+Confirm the list contains only the installer file (1 file) and the reported size is expected.
+
+7) Push the build to itch.io
+
+    butler push "C:\full\path\to\installer\RootsOfEternity-1.2.3.exe" thompty/roots-of-eternity:windows --userversion "1.2.3"
+
+Notes:
+- Use a slugified target: <username>/<game-slug>:<channel>
+- For portable builds (recommended for smaller patches), push a folder or zip instead of an installer.
+- Use --if-changed to skip pushing when no content changed.
+
+8) Check processing status
+
+    butler status thompty/roots-of-eternity:windows
+
+Once the build is processed, test downloads (website and itch app) and verify the installed game works.
+
+9) Rollback or replace
+- You can push older builds or re-upload a previous artifact to replace the channel. Manage builds from the Edit page on itch.io.
+
+10) Optional: offline patches (advanced)
+- Build two installers or builds locally and generate a .pwr patch:
+
+    butler diff old_build_dir new_build_dir -o patch.pwr
+    butler apply patch.pwr target_dir
+
+Note: diffing installers often produces large patches; prefer portable builds for efficient patching.
+
+11) CI / automated releases (short template)
+- Store your BUTLER_API_KEY as a secret in your CI (GitHub Actions, GitLab CI, etc.).
+- Basic PowerShell snippet for CI (Windows runner):
+
+    # Set secret in CI named BUTLER_API_KEY
+    $env:BUTLER_API_KEY = "${{ secrets.BUTLER_API_KEY }}"
+    # build and package steps (use non-interactive builds)
+    powershell -NoProfile -ExecutionPolicy Bypass -File .\build.ps1
+    powershell -NoProfile -ExecutionPolicy Bypass -File .\installer\build-installer.ps1 -AppVersion "$GITHUB_RUN_NUMBER"
+    butler push "installer\RootsOfEternity-$GITHUB_RUN_NUMBER.exe" thompty/roots-of-eternity:windows --userversion "$GITHUB_RUN_NUMBER"
+
+12) Versioning & changelog
+- Always increment `--userversion` (human readable) or set it from a file using --userversion-file.
+- Tag releases in git and keep a CHANGELOG.md with brief notes for players.
+
+13) Post-release checks
+- Test downloaded installer on a clean VM. Verify resources load and gameplay is correct.
+- Monitor crash reports, user feedback, and itch.io page downloads.
+
+Helpful references
+- Butler docs: https://itch.io/docs/butler/
+- Single files (installers): https://itch.io/docs/butler/single-files.html
+- Offline diffs & patches: https://itch.io/docs/butler/offline.html
+
+---
+Keep this checklist handy and adapt steps for portable builds if you switch to folder-based releases.

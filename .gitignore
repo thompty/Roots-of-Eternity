@@ -1,0 +1,43 @@
+# Compiled class files
+*.class
+
+# Build folders
+/bin/
+/out/
+
+# Generated artifacts
+game.jar
+installer/
+image/
+
+# Local database and config (do not commit runtime DB/config)
+configData.db
+hitbox_tuner.cfg
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE/editor
+.vscode/
+.idea/
+*.iml
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*~
+
+# Libraries (if you prefer not to commit jars)
+lib/*.jar
+
+# Packaging outputs
+pack-resources/
+
+# Ignore node_modules just in case
+node_modules/
+
+# Ignore Windows shortcut and installer binaries
+--win-shortcut/RootsOfEternity-1.0.2.exe
