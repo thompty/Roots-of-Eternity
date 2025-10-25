@@ -6,8 +6,10 @@ import java.awt.image.BufferedImage;
 
 import src.main.GamePanel;
 import src.main.KeyHandler;
+import src.object.OBJ_Axe;
 import src.object.OBJ_Fireball;
 import src.object.OBJ_Key;
+import src.object.OBJ_Shield_Blue;
 import src.object.OBJ_Shield_Wood;
 import src.object.OBJ_Sword_Normal;
 
@@ -63,6 +65,9 @@ public class Player extends Entity {
     }
 
     public void getPlayerAttackImage() {
+        if (currentWeapon == null) {
+            return; // no weapon equipped; skip attack images
+        }
 
         if (currentWeapon.type == type_sword) {
             try {
@@ -179,19 +184,28 @@ public class Player extends Entity {
     }
 
     public int getAttack() {
+        if (currentWeapon == null) {
+            // Unarmed fallback: minimal attack and default hitbox
+            attackArea = new java.awt.Rectangle(gamePanel.tileSize, gamePanel.tileSize);
+            return attack = strength; // base strength when unarmed
+        }
         attackArea = currentWeapon.attackArea;
         return attack = strength * currentWeapon.attackValue;
     }
 
     public int getDefense() {
+        if (currentShield == null) {
+            return defense = 0;
+        }
         return defense = dexterity * currentShield.defenseValue;
     }
 
     public void setItems() {
         inventory.clear();
-        inventory.add(currentWeapon);
-        inventory.add(currentShield);
+        // Start with starter gear equipped but not in inventory
         inventory.add(new OBJ_Key(gamePanel));
+        inventory.add(new OBJ_Axe(gamePanel));
+        inventory.add(new OBJ_Shield_Blue(gamePanel));
     }
 
     public void update() { // Update the player's position

@@ -20,6 +20,9 @@ import src.object.OBJ_Mana_Crystal;
 public class UI {
     GamePanel gamePanel;
     Graphics2D g2;
+    // Base game font (Alkhemikal). All UI text derives from this when available.
+    Font alkhemikal;
+    // Legacy fonts kept for fallback only; no longer used as primary.
     Font purisa;
     Font P22DaVinci;
     Font Thomson;
@@ -52,6 +55,18 @@ public class UI {
 
     public UI(GamePanel gamePanel) {
         this.gamePanel = gamePanel;
+
+        // Load Alkhemikal as the global game font
+        try {
+            InputStream alk = getClass().getResourceAsStream("/res/fonts/Alkhemikal.ttf");
+            if (alk == null) {
+                System.out.println("Font resource not found: /res/fonts/Alkhemikal.ttf");
+            } else {
+                alkhemikal = Font.createFont(Font.TRUETYPE_FONT, alk);
+            }
+        } catch (FontFormatException | IOException e) {
+            e.printStackTrace();
+        }
 
         try {
             // Use resource path with forward slashes; getResourceAsStream with leading
@@ -135,6 +150,9 @@ public class UI {
 
     // Ensure fonts are non-null before use; provide safe fallbacks
     private void ensureFonts() {
+        if (alkhemikal == null) {
+            alkhemikal = new Font("SansSerif", Font.PLAIN, 24);
+        }
         if (Roots == null) {
             Roots = new Font("SansSerif", Font.PLAIN, 24);
         }
@@ -154,12 +172,16 @@ public class UI {
     public void draw(Graphics2D g2) {
         this.g2 = g2;
 
-        g2.setFont(Roots);
+        // Set the global base font to Alkhemikal; subsequent deriveFont() calls will
+        // keep using this unless explicitly overridden.
+        if (alkhemikal != null) {
+            g2.setFont(alkhemikal);
+        }
         // For pixel-style custom fonts we prefer crisp glyphs over smoothing.
         // Disable text antialiasing and fractional metrics for a sharper, pixel-perfect
         // look.
         g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_OFF);
-        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         g2.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_OFF);
         g2.setColor(Color.GRAY);
         // Title State
@@ -335,7 +357,9 @@ public class UI {
 
         String value;
 
-        g2.setFont(Hobbiton);
+        // Use base font for values
+        if (alkhemikal != null)
+            g2.setFont(alkhemikal);
         g2.setFont(g2.getFont().deriveFont(Font.PLAIN, 30));
 
         // Level
@@ -386,7 +410,9 @@ public class UI {
         g2.drawString(value, textX, textY);
         textY += lineHeight;
 
-        g2.setFont(Thomson);
+        // Use base font for labels under the icons as well
+        if (alkhemikal != null)
+            g2.setFont(alkhemikal);
         g2.setFont(g2.getFont().deriveFont(Font.PLAIN, 30));
 
         g2.drawImage(gamePanel.player.currentWeapon.down1, tailX - gamePanel.tileSize, textY - 35, null);
@@ -485,7 +511,7 @@ public class UI {
 
     public void drawOptionsScreen() {
         g2.setColor(Color.WHITE);
-        g2.setFont(g2.getFont().deriveFont(Font.BOLD, 36));
+        g2.setFont(g2.getFont().deriveFont(Font.BOLD, 34));
 
         int frameX, frameY, frameWidth, frameHeight;
         frameX = gamePanel.tileSize * 6;
@@ -558,7 +584,7 @@ public class UI {
 
     public void optionsTop(int frameX, int frameY) {
         int textX, textY;
-        g2.setFont(g2.getFont().deriveFont(Font.PLAIN, 40));
+        g2.setFont(g2.getFont().deriveFont(Font.PLAIN, 34));
 
         String text = "Options";
         textX = getXForCenteredText(text);
@@ -676,6 +702,7 @@ public class UI {
     }
 
     public int optionsFullScreenNotification(int frameX, int frameY) {
+        g2.setFont(g2.getFont().deriveFont(Font.PLAIN, 34));
         int textX, textY;
         textX = frameX + gamePanel.tileSize;
         textY = frameY + gamePanel.tileSize * 3;
@@ -702,6 +729,7 @@ public class UI {
     }
 
     public void optionsControl(int frameX, int frameY) {
+        g2.setFont(g2.getFont().deriveFont(Font.PLAIN, 34));
         int textX, textY;
 
         String text = "Control";
@@ -754,11 +782,12 @@ public class UI {
     }
 
     public void optionsEndGameConfirmation(int frameX, int frameY) {
+        g2.setFont(g2.getFont().deriveFont(Font.PLAIN, 34));
         int textX, textY;
         textX = frameX + gamePanel.tileSize;
         textY = frameY + gamePanel.tileSize * 3;
 
-        currentDialogue = "Are you sure you want to \nend the game?";
+        currentDialogue = "Are you sure you want \nto end the game?";
 
         for (String line : currentDialogue.split("\n")) {
             g2.drawString(line, textX, textY);
@@ -833,7 +862,7 @@ public class UI {
             g2.drawString(text, x, y);
             if (commandNum == 0) {
                 g2.drawString("T", x - gamePanel.tileSize, y);
-                g2.drawString("Y", x + gamePanel.tileSize * 4, y);
+                g2.drawString("Y", x + gamePanel.tileSize * 5, y);
             }
 
             text = "Load Game";
@@ -842,7 +871,7 @@ public class UI {
             g2.drawString(text, x, y);
             if (commandNum == 1) {
                 g2.drawString("L", x - gamePanel.tileSize, y);
-                g2.drawString("E", x + gamePanel.tileSize * 4.2F, y);
+                g2.drawString("E", x + gamePanel.tileSize * 5.4F, y);
             }
 
             text = "Quit";
@@ -868,7 +897,7 @@ public class UI {
             g2.drawString(text, x, y);
             if (commandNum == 0) {
                 g2.drawString("O", x - gamePanel.tileSize, y);
-                g2.drawString("O", x + gamePanel.tileSize * 3.7F, y);
+                g2.drawString("O", x + gamePanel.tileSize * 4.4F, y);
             }
 
             text = "Mage";
@@ -877,7 +906,7 @@ public class UI {
             g2.drawString(text, x, y);
             if (commandNum == 1) {
                 g2.drawString("O", x - gamePanel.tileSize, y);
-                g2.drawString("O", x + gamePanel.tileSize * 2.5F, y);
+                g2.drawString("O", x + gamePanel.tileSize * 3.1F, y);
             }
 
             text = "Rogue";
@@ -886,7 +915,7 @@ public class UI {
             g2.drawString(text, x, y);
             if (commandNum == 2) {
                 g2.drawString("O", x - gamePanel.tileSize, y);
-                g2.drawString("O", x + gamePanel.tileSize * 2.9F, y);
+                g2.drawString("O", x + gamePanel.tileSize * 3.5F, y);
             }
 
             text = "Cleric";
@@ -895,11 +924,22 @@ public class UI {
             g2.drawString(text, x, y);
             if (commandNum == 3) {
                 g2.drawString("O", x - gamePanel.tileSize, y);
-                g2.drawString("O", x + gamePanel.tileSize * 2.9F, y);
+                g2.drawString("O", x + gamePanel.tileSize * 3.2F, y);
             }
         } else if (titleScreenState == 2) {
             drawSaveSlotsScreen();
         }
+    }
+
+    /**
+     * Expose the base UI font so other renderers (e.g., GamePanel debug overlays)
+     * can use the same typography.
+     */
+    public Font getBaseFont() {
+        if (alkhemikal != null)
+            return alkhemikal;
+        // fallback to whatever Graphics2D currently uses or a sane default
+        return new Font("SansSerif", Font.PLAIN, 12);
     }
 
     /**

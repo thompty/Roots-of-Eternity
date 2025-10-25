@@ -17,13 +17,24 @@ $OutDir = "build"
 if (Test-Path $OutDir) { Remove-Item -Recurse -Force $OutDir }
 New-Item -ItemType Directory -Path $OutDir | Out-Null
 
-# Compile sources
-$JavacSources = "javac_sources.txt"
-$srcs = Get-Content $JavacSources
+# Compile sources (auto-discover all .java files)
 $cp = (Get-ChildItem -Path .\lib -Filter *.jar | Select-Object -ExpandProperty FullName) -join ';'
-$cmd = 'javac -cp "' + $cp + '" -d ' + $OutDir + ' @' + $JavacSources
+$srcList = Join-Path $OutDir "sources.txt"
+$allSources = Get-ChildItem -Path .\src -Recurse -Filter *.java | Select-Object -ExpandProperty FullName
+Set-Content -Path $srcList -Value $allSources -Encoding ascii
+
 Write-Host "Compiling..."
+$cmd = if ([string]::IsNullOrWhiteSpace($cp)) {
+    'javac -d ' + $OutDir + ' @"' + $srcList + '"'
+} else {
+    'javac -cp "' + $cp + '" -d ' + $OutDir + ' @"' + $srcList + '"'
+}
+
 & cmd /c $cmd
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Compilation failed with exit code $LASTEXITCODE. Aborting build."
+    exit $LASTEXITCODE
+}
 
 # Copy resources
 if (Test-Path .\res) {

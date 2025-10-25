@@ -335,6 +335,11 @@ public class KeyHandler implements KeyListener {
             gamePanel.ui.commandNum = 0;
             gamePanel.gameState = gamePanel.optionsState;
         }
+        if (code == KeyEvent.VK_I) {
+            if (gamePanel.inventoryUI != null) {
+                gamePanel.inventoryUI.toggle();
+            }
+        }
         if (code == KeyEvent.VK_ENTER) {
             enterPressed = true;
         }
@@ -730,6 +735,21 @@ public class KeyHandler implements KeyListener {
                     applyToRectAndDefaults(gamePanel.obj[gamePanel.currentMap][actualIndex],
                             gamePanel.obj[gamePanel.currentMap][actualIndex].solidArea, gamePanel.tunerParam,
                             delta);
+                }
+                break;
+            case 7: // BoneMender NPC(s)
+                java.util.ArrayList<Integer> boneMatches = new java.util.ArrayList<>();
+                for (int i = 0; i < gamePanel.npc[gamePanel.currentMap].length; i++) {
+                    if (gamePanel.npc[gamePanel.currentMap][i] != null
+                            && "BoneMender".equals(gamePanel.npc[gamePanel.currentMap][i].name)) {
+                        boneMatches.add(i);
+                    }
+                }
+                if (boneMatches.size() > 0) {
+                    int pick = Math.min(gamePanel.tunerSubIndex, boneMatches.size() - 1);
+                    int actualIndex = boneMatches.get(pick);
+                    applyToRectAndDefaults(gamePanel.npc[gamePanel.currentMap][actualIndex],
+                            gamePanel.npc[gamePanel.currentMap][actualIndex].solidArea, gamePanel.tunerParam, delta);
                 }
                 break;
             default:

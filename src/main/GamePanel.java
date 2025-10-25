@@ -50,6 +50,7 @@ public class GamePanel extends JPanel implements Runnable {
     Sound soundEffect = new Sound();
     Sound music = new Sound();
     public SaveManager saveManager = new SaveManager(this);
+    public MouseHandler mouseHandler = new MouseHandler(this);
     // currently selected save name (nullable). If null, a new save name will be
     // generated
     public String currentSaveName = null;
@@ -57,6 +58,7 @@ public class GamePanel extends JPanel implements Runnable {
     public CollisionChecker collisionChecker = new CollisionChecker(this);
     public AssetSetter assetSetter = new AssetSetter(this);
     public UI ui = new UI(this);
+    public InventoryUI inventoryUI = new InventoryUI(this);
     public EventHandler eventHandler = new EventHandler(this);
     Config config = new Config(this);
     public Pathfinder pathfinder = new Pathfinder(this);
@@ -69,6 +71,10 @@ public class GamePanel extends JPanel implements Runnable {
     public ArrayList<Entity> projectileList = new ArrayList<>();
     ArrayList<Entity> entityList = new ArrayList<>();
 
+    // Mouse Settings
+    public int mouseX, mouseY;
+    public boolean mousePressed;
+
     // Game State
     public int gameState;
     public final int titleState = 0;
@@ -80,6 +86,7 @@ public class GamePanel extends JPanel implements Runnable {
     public final int gameOverState = 6;
     public final int transitionState = 7;
     public final int tradeState = 8;
+    public final int inventoryState = 9;
     // Debug: remember last state to log changes
     public int lastGameState = -1;
 
@@ -88,7 +95,7 @@ public class GamePanel extends JPanel implements Runnable {
     public boolean showHitBoxes = false;
     // Hitbox tuner
     public boolean debugTuner = false; // toggled with Y (when debugMode is on)
-    public int tunerTarget = 0; // 0=player,1=tile41,2=tile40,3=tile44,4=oldman,5=greenslime
+    public int tunerTarget = 0; // 0=player,1=tile41,2=tile40,3=tile44,4=oldman,5=greenslime,6=object(world),7=bonemender
     public int tunerSubIndex = 0; // when tuning NPC/monster/objects, which instance index
     public int tunerParam = 0; // 0=x,1=y,2=width,3=height
     public int tunerStep = 1;
@@ -117,6 +124,9 @@ public class GamePanel extends JPanel implements Runnable {
             }
         });
 
+        this.addMouseListener(mouseHandler);
+        this.addMouseMotionListener(mouseHandler);
+
         // Also bind TAB at the window level so it works even if the panel doesn't have
         // focus
         javax.swing.KeyStroke tabKey = javax.swing.KeyStroke.getKeyStroke("TAB");
@@ -126,7 +136,7 @@ public class GamePanel extends JPanel implements Runnable {
             public void actionPerformed(java.awt.event.ActionEvent e) {
                 if (debugTuner) {
                     // expand tuner targets to include objects
-                    tunerTarget = (tunerTarget + 1) % 7; // 0..6
+                    tunerTarget = (tunerTarget + 1) % 8; // 0..7
                     String name;
                     switch (tunerTarget) {
                         case 0:
@@ -149,6 +159,9 @@ public class GamePanel extends JPanel implements Runnable {
                             break;
                         case 6:
                             name = "object (world)";
+                            break;
+                        case 7:
+                            name = "npc BoneMender";
                             break;
                         default:
                             name = "unknown";
@@ -397,7 +410,12 @@ public class GamePanel extends JPanel implements Runnable {
                 g2.fillRect(sx, sy, w, h);
                 g2.setColor(Color.WHITE);
                 g2.drawRect(sx, sy, w, h);
-                g2.setFont(g2.getFont().deriveFont(14f));
+                // Use the same base UI font as the rest of the game for consistency
+                if (ui != null && ui.getBaseFont() != null) {
+                    g2.setFont(ui.getBaseFont().deriveFont(14f));
+                } else {
+                    g2.setFont(g2.getFont().deriveFont(14f));
+                }
                 String targetName;
                 switch (tunerTarget) {
                     case 0:
@@ -418,6 +436,12 @@ public class GamePanel extends JPanel implements Runnable {
                     case 5:
                         targetName = "monster GreenSlime";
                         break;
+                    case 6:
+                        targetName = "object (world)";
+                        break;
+                    case 7:
+                        targetName = "npc BoneMender";
+                        break;
                     default:
                         targetName = "unknown";
                         break;
@@ -429,9 +453,13 @@ public class GamePanel extends JPanel implements Runnable {
             }
 
             ui.draw(g2);
-            // Draw minimap overlay on top if enabled
+            // Draw minimap overlay if enabled
             if (tileManager != null && tileManager.showMiniMap) {
                 tileManager.drawMiniMap(g2);
+            }
+            // Draw inventory overlay last so it appears above everything
+            if (inventoryUI != null) {
+                inventoryUI.draw(g2);
             }
         }
     }

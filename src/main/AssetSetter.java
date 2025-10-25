@@ -1,5 +1,6 @@
 package src.main;
 
+import src.entity.NPC_BoneMender;
 import src.entity.NPC_Merchant;
 import src.entity.NPC_OldMan;
 import src.monster.MON_GreenSlime;
@@ -41,6 +42,8 @@ public class AssetSetter {
             // NPCs / Monsters if needed
             case "NPC_OldMan":
                 return new src.entity.NPC_OldMan(gamePanel);
+            case "NPC_BoneMender":
+                return new src.entity.NPC_BoneMender(gamePanel);
             case "NPC_Merchant":
                 return new src.entity.NPC_Merchant(gamePanel);
             case "MON_GreenSlime":
@@ -114,6 +117,11 @@ public class AssetSetter {
         n1.worldX = gamePanel.tileSize * 650;
         n1.worldY = gamePanel.tileSize * 500;
         placeNPC.accept(n1, mapNum);
+
+        src.entity.Entity boneMender1 = new NPC_BoneMender(gamePanel);
+        boneMender1.worldX = gamePanel.tileSize * 630;
+        boneMender1.worldY = gamePanel.tileSize * 540;
+        placeNPC.accept(boneMender1, mapNum);
 
         mapNum = 1;
         // Clear NPC slots for map 1 before placing

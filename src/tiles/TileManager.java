@@ -34,6 +34,9 @@ public class TileManager {
     // avoid spamming the console if placeholder drawn repeatedly
     public boolean[] miniMapPlaceholderLogged;
 
+    // Custom font for overlays
+    private java.awt.Font alkFont; // loaded from res/fonts/Alkhemikal.ttf
+
     public TileManager(GamePanel gamePanel) {
         this.gamePanel = gamePanel;
         tile = new Tile[256];
@@ -43,6 +46,16 @@ public class TileManager {
         mapCols = new int[gamePanel.maxMap];
         mapRows = new int[gamePanel.maxMap];
         miniMapPlaceholderLogged = new boolean[gamePanel.maxMap];
+
+        // Load custom overlay font (Alkhemikal.ttf) if available
+        try (java.io.InputStream fis = getClass().getResourceAsStream("/res/fonts/Alkhemikal.ttf")) {
+            if (fis != null) {
+                alkFont = java.awt.Font.createFont(java.awt.Font.TRUETYPE_FONT, fis);
+            }
+        } catch (Exception ex) {
+            // If loading fails, keep alkFont null and fall back to default font
+            alkFont = null;
+        }
 
         getTileImage();
         loadMap("/res/maps/Overworld Base CSV.csv", 0);
@@ -405,6 +418,50 @@ public class TileManager {
             g2.fillRect(sx, sy, drawW, drawH);
             g2.setColor(java.awt.Color.WHITE);
             g2.drawString("Minimap (building...)", sx + 6, sy + 14);
+
+            // --- Coordinate overlay (placeholder) -------------------------------------
+            // Compute the player's tile coordinate by converting world pixels -> tile index
+            // We floor the division so the tile index is stable for a whole tile
+            int pcol = Math.max(0,
+                    (int) Math.floor((double) gamePanel.player.worldX / Math.max(1, gamePanel.tileSize)));
+            int prow = Math.max(0,
+                    (int) Math.floor((double) gamePanel.player.worldY / Math.max(1, gamePanel.tileSize)));
+            String l1 = "Tile:(" + pcol + "," + prow + ")";
+            // Render the text with Alkhemikal (half current UI font size) if available
+            java.awt.Font oldFont = g2.getFont();
+            java.awt.Font small = (alkFont != null)
+                    ? alkFont.deriveFont(oldFont.getSize2D() * 0.5f)
+                    : oldFont.deriveFont(oldFont.getSize2D() * 0.5f);
+            g2.setFont(small);
+            // Measure text to size the background rect and compute placement
+            java.awt.FontMetrics fm = g2.getFontMetrics();
+            int tw = fm.stringWidth(l1); // text width in pixels
+            int th = fm.getHeight() + 6; // text height + small vertical padding
+            // Right-align under the minimap
+            // We draw a background box of width (tw + 8). Align its right edge to the
+            // minimap's right edge at (sx + drawW). The +4 re-centers text inside the
+            // padded background box (because bg extends 4px left and right).
+            int textX = sx + drawW - (tw + 8) + 4; // left coordinate for text baseline
+            int gap = Math.max(6, miniMapMargin);
+            // Place the baseline such that the TOP of the rectangle is fully below the
+            // minimap
+            int textY = sy + drawH + gap + fm.getAscent() + 4;
+            // Compute background rect bounds from baseline
+            int rectTop = textY - fm.getAscent() - 4;
+            int rectBottom = rectTop + th;
+            int maxBottom = gamePanel.screenHeight - miniMapMargin;
+            // Clamp within screen bottom
+            if (rectBottom > maxBottom) {
+                rectTop = maxBottom - th;
+                textY = rectTop + fm.getAscent() + 4;
+            }
+            // Background with slight transparency for readability on any scene
+            g2.setColor(new java.awt.Color(0, 0, 0, 160));
+            g2.fillRect(textX - 4, rectTop, tw + 8, th);
+            // Foreground text
+            g2.setColor(java.awt.Color.WHITE);
+            g2.drawString(l1, textX, textY);
+            g2.setFont(oldFont);
             // lightweight debug (log only once per map)
             if (!miniMapPlaceholderLogged[map]) {
                 System.out.println("[Minimap] no cached image for map=" + map + ", drawing placeholder.");
@@ -446,6 +503,43 @@ public class TileManager {
 
         g2.setColor(new java.awt.Color(255, 255, 255, 120));
         g2.drawRect(vrx, vry, vrw, vrh);
+
+        // --- Coordinate overlay (final minimap image) -------------------------------
+        // Compute the player's tile coordinate clamped to known map extents
+        int pcol = Math.max(0, Math.min(cols - 1,
+                (int) Math.floor((double) gamePanel.player.worldX / Math.max(1, gamePanel.tileSize))));
+        int prow = Math.max(0, Math.min(rows - 1,
+                (int) Math.floor((double) gamePanel.player.worldY / Math.max(1, gamePanel.tileSize))));
+        String l1 = "Tile:(" + pcol + "," + prow + ")";
+        // Render the text with Alkhemikal (half current UI font size) if available
+        java.awt.Font oldFont = g2.getFont();
+        java.awt.Font small = (alkFont != null)
+                ? alkFont.deriveFont(oldFont.getSize2D() * 0.5f)
+                : oldFont.deriveFont(oldFont.getSize2D() * 0.5f);
+        g2.setFont(small);
+        // Measure text to size the background rect and compute placement
+        java.awt.FontMetrics fm = g2.getFontMetrics();
+        int tw = fm.stringWidth(l1); // text width in pixels
+        int th = fm.getHeight() + 6; // text height + small vertical padding
+        // Right-align under the minimap (see placeholder branch comment for math)
+        int textX = sx + drawW - (tw + 8) + 4;
+        int gap = Math.max(6, miniMapMargin);
+        // Place the baseline such that the TOP of the rectangle is fully below the
+        // minimap
+        int textY = sy + drawH + gap + fm.getAscent() + 4;
+        int rectTop = textY - fm.getAscent() - 4;
+        int rectBottom = rectTop + th;
+        int maxBottom = gamePanel.screenHeight - miniMapMargin;
+        if (rectBottom > maxBottom) {
+            rectTop = maxBottom - th;
+            textY = rectTop + fm.getAscent() + 4;
+        }
+        // Background with slight transparency for readability on any scene
+        g2.setColor(new java.awt.Color(0, 0, 0, 160));
+        g2.fillRect(textX - 4, rectTop, tw + 8, th);
+        g2.setColor(java.awt.Color.WHITE);
+        g2.drawString(l1, textX, textY);
+        g2.setFont(oldFont);
     }
 
     public void draw(Graphics2D g2) {

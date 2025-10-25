@@ -27,6 +27,7 @@ public class Entity {
     public String direction = "down";
     public int spriteCounter = 0;
     public int spriteNum = 1;
+    public boolean moving = false; // true when entity position changes this frame
 
     // Collision and action variables
     public Rectangle solidArea = new Rectangle(0, 0, 48, 48);
@@ -98,7 +99,8 @@ public class Entity {
     public final int type_pickupOnly = 7;
 
     // Image variables
-    public BufferedImage up0, up1, up2, down0, down1, down2, left0, left1, left2, right0, right1, right2, image1, image2, image3;
+    public BufferedImage up0, up1, up2, up3, down0, down1, down2, down3, left0, left1, left2, left3, right0, right1,
+            right2, right3, image1, image2, image3;
     public BufferedImage attackUp1, attackUp2, attackDown1, attackDown2, attackLeft1, attackLeft2, attackRight1,
             attackRight2;
 
@@ -170,6 +172,9 @@ public class Entity {
     }
 
     public void update() {
+        int oldX = worldX;
+        int oldY = worldY;
+
         setAction();
         checkCollision();
 
@@ -193,6 +198,9 @@ public class Entity {
                 }
             }
         }
+
+        // moving = whether position actually changed this tick
+        moving = (worldX != oldX) || (worldY != oldY);
 
         spriteCounter++;
         // Change the sprite every 10 frames
@@ -238,6 +246,11 @@ public class Entity {
         int screenX = worldX - gamePanel.player.worldX + gamePanel.player.screenX;
         int screenY = worldY - gamePanel.player.worldY + gamePanel.player.screenY;
 
+        // Special-case animation rules: BoneMender has distinct idle (0/1) and walk
+        // (2/3)
+        // frames; most other NPCs/monsters only provide frames 1/2 per direction.
+        final boolean isBoneMender = "BoneMender".equals(this.name);
+
         if (worldX + gamePanel.tileSize > gamePanel.player.worldX - gamePanel.player.screenX &&
                 worldX - gamePanel.tileSize < gamePanel.player.worldX + gamePanel.player.screenX &&
                 worldY + gamePanel.tileSize > gamePanel.player.worldY - gamePanel.player.screenY &&
@@ -245,37 +258,85 @@ public class Entity {
 
             switch (direction) {
                 case "up":
-                    if (spriteNum == 1) {
-                        image = up1;
-                    }
-                    if (spriteNum == 2) {
-                        image = up2;
+                    if (isBoneMender) {
+                        if (!moving) {
+                            image = (spriteNum == 1) ? up0 : up1; // idle 0/1
+                        } else {
+                            image = (spriteNum == 1) ? up2 : up3; // walk 2/3
+                        }
+                    } else {
+                        if (!moving) {
+                            image = up1; // idle holds frame 1 for non-BoneMender
+                        } else {
+                            image = (spriteNum == 1) ? up1 : up2; // walk 1/2
+                        }
                     }
                     break;
                 case "down":
-                    if (spriteNum == 1) {
-                        image = down1;
-                    }
-                    if (spriteNum == 2) {
-                        image = down2;
+                    if (isBoneMender) {
+                        if (!moving) {
+                            image = (spriteNum == 1) ? down0 : down1;
+                        } else {
+                            image = (spriteNum == 1) ? down2 : down3;
+                        }
+                    } else {
+                        if (!moving) {
+                            image = down1;
+                        } else {
+                            image = (spriteNum == 1) ? down1 : down2;
+                        }
                     }
                     break;
                 case "left":
-                    if (spriteNum == 1) {
-                        image = left1;
-                    }
-                    if (spriteNum == 2) {
-                        image = left2;
+                    if (isBoneMender) {
+                        if (!moving) {
+                            image = (spriteNum == 1) ? left0 : left1;
+                        } else {
+                            image = (spriteNum == 1) ? left2 : left3;
+                        }
+                    } else {
+                        if (!moving) {
+                            image = left1;
+                        } else {
+                            image = (spriteNum == 1) ? left1 : left2;
+                        }
                     }
                     break;
                 case "right":
-                    if (spriteNum == 1) {
-                        image = right1;
-                    }
-                    if (spriteNum == 2) {
-                        image = right2;
+                    if (isBoneMender) {
+                        if (!moving) {
+                            image = (spriteNum == 1) ? right0 : right1;
+                        } else {
+                            image = (spriteNum == 1) ? right2 : right3;
+                        }
+                    } else {
+                        if (!moving) {
+                            image = right1;
+                        } else {
+                            image = (spriteNum == 1) ? right1 : right2;
+                        }
                     }
                     break;
+            }
+
+            // Fallback safety: if selected frame is missing for a given entity, try a
+            // reasonable alternative to avoid drawing null.
+            if (image == null) {
+                switch (direction) {
+                    case "up":
+                        image = (up1 != null) ? up1 : (up2 != null ? up2 : (up0 != null ? up0 : up3));
+                        break;
+                    case "down":
+                        image = (down1 != null) ? down1 : (down2 != null ? down2 : (down0 != null ? down0 : down3));
+                        break;
+                    case "left":
+                        image = (left1 != null) ? left1 : (left2 != null ? left2 : (left0 != null ? left0 : left3));
+                        break;
+                    case "right":
+                        image = (right1 != null) ? right1
+                                : (right2 != null ? right2 : (right0 != null ? right0 : right3));
+                        break;
+                }
             }
             if (type == 2 && hpBarOn == true) {
                 double oneScale = (double) gamePanel.tileSize / maxHealth;
